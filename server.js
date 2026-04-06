@@ -1,99 +1,66 @@
+// server.js - AI WhatsApp Reply Server (Gemini, human-like style)
 const express = require("express");
+const bodyParser = require("body-parser");
+const cors = require("cors");
 const axios = require("axios");
 
 const app = express();
-app.use(express.json());
+app.use(bodyParser.json());
+app.use(cors());
 
-// ==============================
-// 🔐 ENV VALIDATION
-// ==============================
-if (!process.env.API_KEY) {
-    console.error("❌ Missing API_KEY in environment variables");
-    process.exit(1);
-}
-
+// Gemini API key from environment variables
 const GEMINI_API_KEY = process.env.API_KEY;
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
-// ==============================
-// 🧠 HEALTH CHECK ROUTE
-// ==============================
+const PORT = process.env.PORT || 10000;
+
 app.get("/", (req, res) => {
-    res.status(200).send("✅ Server is running");
+    res.send("AI Reply Server is running 🎉");
 });
 
-// ==============================
-// 🤖 AI REPLY ENDPOINT
-// ==============================
+// Main endpoint for AI replies
 app.post("/reply", async (req, res) => {
     try {
         const { message } = req.body;
 
         if (!message) {
-            return res.status(400).json({
-                success: false,
-                reply: "No message provided"
-            });
+            return res.json({ success: false, reply: "No message provided" });
         }
 
+        // Call Gemini API with improved prompt for natural texting
         const response = await axios.post(
-            `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`,
             {
                 contents: [
                     {
                         parts: [
                             {
-                                text: `Reply in a short, casual, natural tone.\n\nMessage: ${message}`
+                                text: `You are replying as a teenager to your girlfriend. 
+Keep it casual, slightly flirty, funny sometimes, natural. 
+Be short and real, like texting normally. 
+User says: ${message} 
+Reply as if you are me.`
                             }
                         ]
                     }
                 ]
-            },
-            {
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                timeout: 10000
             }
         );
 
+        // Extract reply from API response
         const reply =
-            response.data?.candidates?.[0]?.content?.parts
-                ?.map((part) => part.text || "")
-                .join("") ||
-            "Hmm didn't get that 😅";
+            response.data.candidates?.[0]?.content?.parts?.[0]?.text ||
+            "Hmm 😅";
 
-        return res.json({
-            success: true,
-            reply
-        });
+        res.json({ success: true, reply });
+
     } catch (error) {
-        console.error("❌ Gemini API Error:", error.response?.data || error.message);
-
-        return res.status(500).json({
-            success: false,
-            reply: "Busy rn, text you later ❤️"
-        });
+        console.error("Gemini Error:", error.response?.data || error.message);
+        res.json({ success: false, reply: "Busy rn, text you later ❤️" });
     }
 });
 
-// ==============================
-// ⚠️ GLOBAL ERROR HANDLER
-// ==============================
-app.use((err, req, res, next) => {
-    console.error("💥 Server Error:", err.stack);
-
-    res.status(500).json({
-        success: false,
-        message: "Internal Server Error"
-    });
-});
-
-// ==============================
-// 🚀 START SERVER
-// ==============================
-const PORT = process.env.PORT || 3000;
-
+// Start server
 app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
+    console.log("Your AI reply service is live 🎉");
 });
