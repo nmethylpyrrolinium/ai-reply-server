@@ -1,4 +1,4 @@
-// server.js - Fully working Gemini AI WhatsApp Reply Server
+// server.js - AI WhatsApp Reply Server (personalized, human-like)
 const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
@@ -8,48 +8,69 @@ const app = express();
 app.use(bodyParser.json());
 app.use(cors());
 
-// Pull your Gemini API key from environment variables
+// Gemini API key from environment variables
 const GEMINI_API_KEY = process.env.API_KEY;
 
 const PORT = process.env.PORT || 10000;
+
+// Example messages from your exported chat to mimic your style
+// You can expand this array with 20-50 of your past messages for better personalization
+const sampleChat = `
+User: Hey what are you doing?
+Me: Just chilling, u? 😏
+User: HI LOL
+Me: LOL 😂 that’s wild!
+User: Tf u mean
+Me: Hmm, gotcha 😅
+User: What u got
+Me: Okay! Cool 😎
+`;
+
+// Random delay function (1–5 seconds)
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 app.get("/", (req, res) => {
     res.send("AI Reply Server is running 🎉");
 });
 
-// Main endpoint to get AI replies
 app.post("/reply", async (req, res) => {
     try {
-        const { message } = req.body;
+        const { message, sender } = req.body;
 
         if (!message) {
             return res.json({ success: false, reply: "No message provided" });
         }
 
-        // Call Gemini API with improved prompt for natural, personal replies
+        // Optional: only reply to specific contact (uncomment if needed)
+        // if(sender !== "<your-girlfriend-number>") return;
+
+        // Prepare prompt for Gemini
+        const prompt = `
+You are replying as me to my girlfriend.
+Use the style and tone from these examples:
+${sampleChat}
+User: ${message}
+Reply exactly as if you are me texting. Be short, casual, slightly flirty, natural, use emojis if appropriate.
+`;
+
         const response = await axios.post(
             `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`,
             {
                 contents: [
                     {
                         parts: [
-                            {
-                                text: `You are replying as a teenager to your girlfriend. 
-Keep it casual, short, slightly flirty, funny sometimes, natural, and human-like. 
-Use emojis if appropriate. 
-User says: ${message} 
-Reply exactly as if you are me texting.`
-                            }
+                            { text: prompt }
                         ]
                     }
                 ]
             }
         );
 
-        // Parse reply
-        const reply =
-            response.data.candidates?.[0]?.content?.parts?.[0]?.text ||
-            "Hmm 😅";
+        // Extract reply
+        let reply = response.data.candidates?.[0]?.content?.parts?.[0]?.text || "Hmm 😅";
+
+        // Random delay before sending to feel human
+        await delay(Math.floor(Math.random() * 4000) + 1000);
 
         res.json({ success: true, reply });
 
@@ -59,8 +80,7 @@ Reply exactly as if you are me texting.`
     }
 });
 
-// Start server
 app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
-    console.log(`Your AI reply service is live 🎉`);
+    console.log("Your AI reply service is live 🎉");
 });
