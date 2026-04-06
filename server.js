@@ -35,28 +35,22 @@ app.post("/reply", async (req, res) => {
             });
         }
 
-        // Call Gemini API
-        const aiResponse = await axios.post(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`,
+        // ==============================
+        // 🧠 Gemini AI Call
+        // ==============================
+        const response = await axios.post(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-preview:generateText?key=${GEMINI_API_KEY}`,
             {
-                contents: [
-                    {
-                        parts: [
-                            {
-                                text: `Reply like me: short, chill, slightly flirty, natural.\n\nUser: ${message}`
-                            }
-                        ]
-                    }
-                ]
+                prompt: `Reply like me: short, chill, slightly flirty, natural.\n\nUser: ${message}`,
+                maxOutputTokens: 150,
+                temperature: 0.7
             },
-            {
-                timeout: 10000
-            }
+            { timeout: 10000 }
         );
 
         const reply =
-            aiResponse.data?.candidates?.[0]?.content?.parts?.[0]?.text ||
-            "Hmm didn't get that 😅";
+            response.data?.candidates?.[0]?.outputText ||
+            "Hmm 😅";
 
         return res.json({
             success: true,
