@@ -12,7 +12,7 @@ if (!process.env.API_KEY) {
     process.exit(1);
 }
 
-const OPENROUTER_API_KEY = process.env.API_KEY;
+const GEMINI_API_KEY = process.env.API_KEY;
 
 // ==============================
 // 🧠 HEALTH CHECK ROUTE
@@ -35,32 +35,27 @@ app.post("/reply", async (req, res) => {
             });
         }
 
+        // Call Gemini API
         const aiResponse = await axios.post(
-            "https://openrouter.ai/api/v1/chat/completions",
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`,
             {
-                model: "mistralai/mistral-7b-instruct",
-                messages: [
+                contents: [
                     {
-                        role: "system",
-                        content: "Reply like a chill boyfriend: short, natural, slightly flirty, human tone."
-                    },
-                    {
-                        role: "user",
-                        content: message
+                        parts: [
+                            {
+                                text: `Reply like me: short, chill, slightly flirty, natural.\n\nUser: ${message}`
+                            }
+                        ]
                     }
                 ]
             },
             {
-                headers: {
-                    Authorization: `Bearer ${OPENROUTER_API_KEY}`,
-                    "Content-Type": "application/json"
-                },
                 timeout: 10000
             }
         );
 
         const reply =
-            aiResponse.data?.choices?.[0]?.message?.content ||
+            aiResponse.data?.candidates?.[0]?.content?.parts?.[0]?.text ||
             "Hmm didn't get that 😅";
 
         return res.json({
@@ -69,7 +64,7 @@ app.post("/reply", async (req, res) => {
         });
 
     } catch (error) {
-        console.error("❌ API Error:", error.response?.data || error.message);
+        console.error("❌ Gemini API Error:", error.response?.data || error.message);
 
         return res.status(500).json({
             success: false,
