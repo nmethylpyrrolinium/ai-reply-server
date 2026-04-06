@@ -1,4 +1,5 @@
-// server.js - AI WhatsApp Reply Server (personalized, human-like)
+
+// server.js - AI WhatsApp Reply Server (Gemini working model)
 const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
@@ -8,13 +9,11 @@ const app = express();
 app.use(bodyParser.json());
 app.use(cors());
 
-// Gemini API key from environment variables
+// Gemini API key from environment
 const GEMINI_API_KEY = process.env.API_KEY;
-
 const PORT = process.env.PORT || 10000;
 
-// Example messages from your exported chat to mimic your style
-// You can expand this array with 20-50 of your past messages for better personalization
+// Example chat style (expand with your own later)
 const sampleChat = `
 User: Hey what are you doing?
 Me: Just chilling, u? 😏
@@ -26,7 +25,6 @@ User: What u got
 Me: Okay! Cool 😎
 `;
 
-// Random delay function (1–5 seconds)
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 app.get("/", (req, res) => {
@@ -35,41 +33,34 @@ app.get("/", (req, res) => {
 
 app.post("/reply", async (req, res) => {
     try {
-        const { message, sender } = req.body;
+        const { message } = req.body;
 
         if (!message) {
             return res.json({ success: false, reply: "No message provided" });
         }
 
-        // Optional: only reply to specific contact (uncomment if needed)
-        // if(sender !== "<your-girlfriend-number>") return;
-
-        // Prepare prompt for Gemini
         const prompt = `
 You are replying as me to my girlfriend.
 Use the style and tone from these examples:
 ${sampleChat}
 User: ${message}
-Reply exactly as if you are me texting. Be short, casual, slightly flirty, natural, use emojis if appropriate.
-`;
+Reply exactly as if you are me texting. Be short, casual, slightly flirty, natural, use emojis.
+        `;
 
         const response = await axios.post(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`,
+            `https://generativelanguage.googleapis.com/v1beta/models/text-bison-001:generateText?key=${GEMINI_API_KEY}`,
             {
-                contents: [
-                    {
-                        parts: [
-                            { text: prompt }
-                        ]
-                    }
-                ]
+                prompt: prompt,
+                temperature: 0.8,
+                maxOutputTokens: 150
             }
         );
 
-        // Extract reply
-        let reply = response.data.candidates?.[0]?.content?.parts?.[0]?.text || "Hmm 😅";
+        const reply =
+            response.data?.output?.text ||
+            "Hmm 😅";
 
-        // Random delay before sending to feel human
+        // random human-like delay (1–5 sec)
         await delay(Math.floor(Math.random() * 4000) + 1000);
 
         res.json({ success: true, reply });
@@ -82,5 +73,4 @@ Reply exactly as if you are me texting. Be short, casual, slightly flirty, natur
 
 app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
-    console.log("Your AI reply service is live 🎉");
 });
