@@ -5,7 +5,7 @@ const app = express();
 app.use(express.json());
 
 // ==============================
-// 🔐 ENV VALIDATION (IMPORTANT)
+// 🔐 ENV VALIDATION
 // ==============================
 if (!process.env.API_KEY) {
     console.error("❌ Missing API_KEY in environment variables");
@@ -13,6 +13,7 @@ if (!process.env.API_KEY) {
 }
 
 const GEMINI_API_KEY = process.env.API_KEY;
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
 // ==============================
 // 🧠 HEALTH CHECK ROUTE
@@ -35,28 +36,37 @@ app.post("/reply", async (req, res) => {
             });
         }
 
-        // ==============================
-        // 🧠 Gemini AI Call
-        // ==============================
         const response = await axios.post(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-preview:generateText?key=${GEMINI_API_KEY}`,
+            `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
             {
-                prompt: `Reply like me: short, chill, slightly flirty, natural.\n\nUser: ${message}`,
-                maxOutputTokens: 150,
-                temperature: 0.7
+                contents: [
+                    {
+                        parts: [
+                            {
+                                text: `Reply in a short, casual, natural tone.\n\nMessage: ${message}`
+                            }
+                        ]
+                    }
+                ]
             },
-            { timeout: 10000 }
+            {
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                timeout: 10000
+            }
         );
 
         const reply =
-            response.data?.candidates?.[0]?.outputText ||
-            "Hmm 😅";
+            response.data?.candidates?.[0]?.content?.parts
+                ?.map((part) => part.text || "")
+                .join("") ||
+            "Hmm didn't get that 😅";
 
         return res.json({
             success: true,
             reply
         });
-
     } catch (error) {
         console.error("❌ Gemini API Error:", error.response?.data || error.message);
 
@@ -80,7 +90,7 @@ app.use((err, req, res, next) => {
 });
 
 // ==============================
-// 🚀 START SERVER (RENDER FIX)
+// 🚀 START SERVER
 // ==============================
 const PORT = process.env.PORT || 3000;
 
